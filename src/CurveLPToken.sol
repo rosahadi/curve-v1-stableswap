@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title CurveLPToken - Curve Liquidity Provider Token
@@ -11,6 +11,12 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Only the pool contract can mint/burn tokens
  */
 contract CurveLPToken is ERC20, Ownable {
+    error InvalidMinter();
+    error OnlyMinter();
+    error CannotMintToZero();
+    error CannotBurnFromZero();
+    error InsufficientBalance();
+
     address public s_minter;
 
     event MinterSet(address indexed minter);
@@ -22,18 +28,16 @@ contract CurveLPToken is ERC20, Ownable {
      * @param _minter Address that can mint/burn (the pool contract)
      * @param initialOwner Initial owner of the contract
      */
-    constructor(
-        string memory name,
-        string memory symbol,
-        address _minter,
-        address initialOwner
-    ) ERC20(name, symbol) Ownable(initialOwner) {
-        require(_minter != address(0), "Invalid minter");
+    constructor(string memory name, string memory symbol, address _minter, address initialOwner)
+        ERC20(name, symbol)
+        Ownable(initialOwner)
+    {
+        if (_minter == address(0)) revert InvalidMinter();
         s_minter = _minter;
         emit MinterSet(s_minter);
     }
 
-     /**
+    /**
      * @notice Mint new LP tokens
      * @dev Only the designated minter (pool contract) can mint
      * @param _to Address to receive tokens
@@ -41,8 +45,8 @@ contract CurveLPToken is ERC20, Ownable {
      * @return success True if mint was successful
      */
     function mint(address _to, uint256 _value) external returns (bool success) {
-        require(msg.sender == s_minter, "Only minter can mint");
-        require(_to != address(0), "Cannot mint to zero address");
+        if (msg.sender != s_minter) revert OnlyMinter();
+        if (_to == address(0)) revert CannotMintToZero();
 
         _mint(_to, _value);
         return true;
@@ -56,9 +60,9 @@ contract CurveLPToken is ERC20, Ownable {
      * @return success True if burn was successful
      */
     function burnFrom(address _from, uint256 _value) external returns (bool success) {
-        require(msg.sender == s_minter, "Only minter can burn");
-        require(_from != address(0), "Cannot burn from zero address");
-        require(balanceOf(_from) >= _value, "Insufficient balance");
+        if (msg.sender != s_minter) revert OnlyMinter();
+        if (_from == address(0)) revert CannotBurnFromZero();
+        if (balanceOf(_from) < _value) revert InsufficientBalance();
 
         _burn(_from, _value);
         return true;
@@ -70,7 +74,7 @@ contract CurveLPToken is ERC20, Ownable {
      * @param _minter New minter address
      */
     function setMinter(address _minter) external onlyOwner {
-        require(_minter != address(0), "Invalid minter");
+        if (_minter == address(0)) revert InvalidMinter();
         s_minter = _minter;
         emit MinterSet(_minter);
     }
