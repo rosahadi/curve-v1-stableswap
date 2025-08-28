@@ -32,9 +32,10 @@ contract CurveLPToken is ERC20, Ownable {
         ERC20(name, symbol)
         Ownable(initialOwner)
     {
-        if (_minter == address(0)) revert CurveLPToken_InvalidMinter();
         s_minter = _minter;
-        emit MinterSet(s_minter);
+        if (_minter != address(0)) {
+            emit MinterSet(s_minter);
+        }
     }
 
     /**
@@ -45,7 +46,7 @@ contract CurveLPToken is ERC20, Ownable {
      * @return success True if mint was successful
      */
     function mint(address _to, uint256 _value) external returns (bool success) {
-        if (msg.sender != s_minter) revert CurveLPToken_OnlyMinter();
+        if (msg.sender != s_minter || s_minter == address(0)) revert CurveLPToken_OnlyMinter();
         if (_to == address(0)) revert CurveLPToken_CannotMintToZero();
 
         _mint(_to, _value);
@@ -60,7 +61,7 @@ contract CurveLPToken is ERC20, Ownable {
      * @return success True if burn was successful
      */
     function burnFrom(address _from, uint256 _value) external returns (bool success) {
-        if (msg.sender != s_minter) revert CurveLPToken_OnlyMinter();
+        if (msg.sender != s_minter || s_minter == address(0)) revert CurveLPToken_OnlyMinter();
         if (_from == address(0)) revert CurveLPToken_CannotBurnFromZero();
         if (balanceOf(_from) < _value) revert CurveLPToken_InsufficientBalance();
 
